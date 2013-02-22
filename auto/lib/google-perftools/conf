@@ -1,4 +1,3 @@
-
 # Copyright (C) Igor Sysoev
 # Copyright (C) Nginx, Inc.
 
@@ -53,7 +52,7 @@ else
 cat << END
 
 $0: error: the Google perftool module requires the Google perftools
-library. You can either do not enable the module or install the library.
+library. Please install the library or disable the module.
 
 END
 
