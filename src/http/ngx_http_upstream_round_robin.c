@@ -142,6 +142,8 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
             }
         }
 
+        if ( peers->number==1 && backup->number>1) { backup->isstandby=1; }  //test
+
         peers->next = backup;
 
         return NGX_OK;
@@ -496,7 +498,7 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
             continue;
         }
         
-        if (rrp->peers->next) { break; }  //test
+        if (rrp->peers->isstandby) { best = peer; break; }  //test
 
         peer->current_weight += peer->effective_weight;
         total += peer->effective_weight;
