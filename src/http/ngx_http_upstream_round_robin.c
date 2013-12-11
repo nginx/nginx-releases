@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
@@ -496,6 +495,8 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
         {
             continue;
         }
+        
+        if (rrp->peers->next) { break; }  //test
 
         peer->current_weight += peer->effective_weight;
         total += peer->effective_weight;
