@@ -17,12 +17,12 @@
 #define NGX_GEOIP_COUNTRY_CODE3  1
 #define NGX_GEOIP_COUNTRY_NAME   2
 
-
 typedef struct {
     GeoIP        *country;
     GeoIP        *org;
     GeoIP        *city;
-    ngx_array_t  *proxies;    /* array of ngx_cidr_t */
+    GeoIP        *netspeed;     /* _v6 and rev0 are not supported! */
+    ngx_array_t  *proxies;      /* array of ngx_cidr_t */
     ngx_flag_t    proxy_recursive;
 #if (NGX_HAVE_GEOIP_V6)
     unsigned      country_v6:1;
@@ -63,13 +63,15 @@ ngx_http_geoip_variable_handler_v6_pt ngx_http_geoip_country_v6_functions[] = {
 
 #endif
 
-
 static ngx_int_t ngx_http_geoip_country_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_geoip_org_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_geoip_city_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_geoip_netspeed_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+
 static ngx_int_t ngx_http_geoip_region_name_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_geoip_city_float_variable(ngx_http_request_t *r,
@@ -86,6 +88,8 @@ static char *ngx_http_geoip_country(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_http_geoip_org(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_geoip_city(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+static char *ngx_http_geoip_netspeed(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_geoip_proxy(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -113,6 +117,13 @@ static ngx_command_t  ngx_http_geoip_commands[] = {
     { ngx_string("geoip_city"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE12,
       ngx_http_geoip_city,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("geoip_netspeed"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE12,
+      ngx_http_geoip_netspeed,
       NGX_HTTP_MAIN_CONF_OFFSET,
       0,
       NULL },
@@ -231,6 +242,10 @@ static ngx_http_variable_t  ngx_http_geoip_vars[] = {
     { ngx_string("geoip_area_code"), NULL,
       ngx_http_geoip_city_int_variable,
       offsetof(GeoIPRecord, area_code), 0, 0 },
+
+    { ngx_string("geoip_netspeed"), NULL,
+      ngx_http_geoip_netspeed_variable,
+      0, 0, 0 },
 
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
@@ -438,6 +453,51 @@ not_found:
     return NGX_OK;
 }
 
+/* Netspeed variable retrieval */
+static ngx_int_t
+ngx_http_geoip_netspeed_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    size_t                  len;
+    char                   *val;
+    ngx_http_geoip_conf_t  *gcf;
+
+    gcf = ngx_http_get_module_main_conf(r, ngx_http_geoip_module);
+
+    if (gcf->netspeed == NULL) {
+        goto not_found;
+    }
+
+    val = GeoIP_name_by_ipnum(gcf->netspeed, ngx_http_geoip_addr(r, gcf));
+
+    if (val == NULL) {
+        goto not_found;
+    }
+
+    len = ngx_strlen(val);
+    v->data = ngx_pnalloc(r->pool, len);
+    if (v->data == NULL) {
+        ngx_free(val);
+        return NGX_ERROR;
+    }
+
+    ngx_memcpy(v->data, val, len);
+
+    v->len = len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    ngx_free(val);
+
+    return NGX_OK;
+
+not_found:
+
+    v->not_found = 1;
+
+    return NGX_OK;
+}
 
 static ngx_int_t
 ngx_http_geoip_city_variable(ngx_http_request_t *r,
@@ -871,6 +931,58 @@ ngx_http_geoip_proxy(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
+/*
+    Load the Netspeed database file and cache it in memory.
+    Note:   This only supports GEOIP_NETSPEED_EDITION_REV1
+            Not supported: *_v6 or first revision.
+*/
+static char *
+ngx_http_geoip_netspeed(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_geoip_conf_t  *gcf = conf;
+
+    ngx_str_t  *value;
+
+    if (gcf->netspeed) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    gcf->netspeed = GeoIP_open((char *) value[1].data, GEOIP_MEMORY_CACHE);
+
+    if (gcf->netspeed == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "GeoIP_open(\"%V\") failed", &value[1]);
+
+        return NGX_CONF_ERROR;
+    }
+
+    if (cf->args->nelts == 3) {
+        if (ngx_strcmp(value[2].data, "utf8") == 0) {
+            GeoIP_set_charset (gcf->netspeed, GEOIP_CHARSET_UTF8);
+
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid parameter \"%V\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    switch (gcf->netspeed->databaseType) {
+
+    case GEOIP_NETSPEED_EDITION_REV1:
+
+        return NGX_CONF_OK;
+
+    default:
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid GeoIP database \"%V\" type:%d",
+                           &value[1], gcf->netspeed->databaseType);
+        return NGX_CONF_ERROR;
+    }
+}
+
 static ngx_int_t
 ngx_http_geoip_cidr_value(ngx_conf_t *cf, ngx_str_t *net, ngx_cidr_t *cidr)
 {
@@ -915,5 +1027,9 @@ ngx_http_geoip_cleanup(void *data)
 
     if (gcf->city) {
         GeoIP_delete(gcf->city);
+    }
+
+    if (gcf->netspeed) {
+        GeoIP_delete(gcf->netspeed);
     }
 }
