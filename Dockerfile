@@ -5,8 +5,10 @@ RUN apt-get update && apt-get install -y \
 		libgd2-dev \
 		libgeoip-dev \
 		libpcre3-dev \
+		libperl-dev \
 		libssl-dev \
-		libxslt1-dev
+		libxslt1-dev \
+		perl
 
 ADD . /usr/src/nginx
 WORKDIR /usr/src/nginx
@@ -24,6 +26,7 @@ RUN ./configure \
 		--with-http_geoip_module \
 		--with-http_gzip_static_module \
 		--with-http_image_filter_module \
+		--with-http_perl_module \
 		--with-http_realip_module \
 		--with-http_spdy_module \
 		--with-http_ssl_module \
