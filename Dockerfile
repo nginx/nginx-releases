@@ -1,5 +1,6 @@
 FROM debian:jessie
 
+# All our build dependencies, in alphabetical order (to ease maintenance)
 RUN apt-get update && apt-get install -y \
 		build-essential \
 		libgd2-dev \
