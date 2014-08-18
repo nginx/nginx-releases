@@ -84,6 +84,8 @@ typedef struct {
     ngx_uint_t                     ssl_verify_depth;
     ngx_str_t                      ssl_trusted_certificate;
     ngx_str_t                      ssl_crl;
+    ngx_str_t                      ssl_client_certificate;
+    ngx_str_t                      ssl_client_certificate_key;
 #endif
 } ngx_http_proxy_loc_conf_t;
 
@@ -597,6 +599,21 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, ssl_crl),
       NULL },
+
+    { ngx_string("proxy_ssl_client_certificate"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, ssl_client_certificate),
+      NULL },
+
+      { ngx_string("proxy_ssl_client_certificate_key"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, ssl_client_certificate_key),
+      NULL },
+
 
 #endif
 
@@ -2451,6 +2468,8 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->ssl_ciphers = { 0, NULL };
      *     conf->ssl_trusted_certificate = { 0, NULL };
      *     conf->ssl_crl = { 0, NULL };
+     *     conf->ssl_client_certificate = { 0, NULL };
+     *     conf->ssl_client_certificate_key = { 0, NULL };
      */
 
     conf->upstream.store = NGX_CONF_UNSET;
@@ -2794,6 +2813,14 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->ssl && ngx_http_proxy_set_ssl(cf, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
+    }
+    ngx_conf_merge_str_value(conf->ssl_client_certificate,
+                              prev->ssl_client_certificate, "");
+    ngx_conf_merge_str_value(conf->ssl_client_certificate_key,
+                              prev->ssl_client_certificate_key, "");
+    if( conf->ssl_trusted_certificate.len != 0  && ( conf->ssl_client_certificate.len != 0 || conf->ssl_client_certificate_key.len != 0) ) {
+         ngx_log_error(NGX_LOG_WARN, cf->log, 0,
+                      "proxy_ssl_trusted_certificate is configured so proxy_ssl_client_certificate and proxy_ssl_client_certificate_key will be ignored");
     }
 
 #endif
@@ -3861,11 +3888,8 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
     }
 
     if (plcf->upstream.ssl_verify) {
-        if (plcf->ssl_trusted_certificate.len == 0) {
-            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                      "no proxy_ssl_trusted_certificate for proxy_ssl_verify");
-            return NGX_ERROR;
-        }
+
+      if (plcf->ssl_trusted_certificate.len != 0) {
 
         if (ngx_ssl_trusted_certificate(cf, plcf->upstream.ssl,
                                         &plcf->ssl_trusted_certificate,
@@ -3874,9 +3898,26 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
         {
             return NGX_ERROR;
         }
-
         if (ngx_ssl_crl(cf, plcf->upstream.ssl, &plcf->ssl_crl) != NGX_OK) {
             return NGX_ERROR;
+        }
+      }else if (plcf->ssl_client_certificate_key.len != 0 && plcf->ssl_client_certificate.len != 0) {
+            
+          if (ngx_ssl_certificate(cf, plcf->upstream.ssl,
+                                        &plcf->ssl_client_certificate,
+                                       &plcf->ssl_client_certificate_key,
+                                       0)
+            != NGX_OK)
+          {
+               ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
+                   "ngx_ssl_certificate failed.");
+              return NGX_ERROR;
+           }
+        }else {
+              ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "no proxy_ssl_trusted_certificate or (proxy_ssl_client_certificate and proxy_ssl_client_certificate_key for mutual authentication) for proxy_ssl_verify");
+            return NGX_ERROR;
+        
         }
     }
 
