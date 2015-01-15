@@ -46,8 +46,8 @@ ngx_module_t  ngx_http_header_filter_module = {
 };
 
 
-static char ngx_http_server_string[] = "Server: nginx" CRLF;
-static char ngx_http_server_full_string[] = "Server: " NGINX_VER CRLF;
+static char ngx_http_server_string[] = "";
+static char ngx_http_server_full_string[] = "";
 
 
 static ngx_str_t ngx_http_status_lines[] = {
@@ -278,8 +278,8 @@ ngx_http_header_filter(ngx_http_request_t *r)
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     if (r->headers_out.server == NULL) {
-        len += clcf->server_tokens ? sizeof(ngx_http_server_full_string) - 1:
-                                     sizeof(ngx_http_server_string) - 1;
+        len += clcf->server_tokens ? sizeof(ngx_http_server_full_string) - 0:
+                                     sizeof(ngx_http_server_string) - 0;
     }
 
     if (r->headers_out.date == NULL) {
