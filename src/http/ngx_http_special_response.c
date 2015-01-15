@@ -18,8 +18,8 @@ static ngx_int_t ngx_http_send_special_response(ngx_http_request_t *r,
 static ngx_int_t ngx_http_send_refresh(ngx_http_request_t *r);
 
 
-static u_char ngx_http_error_full_tail[] = "";
-static u_char ngx_http_error_tail[] = "";
+static u_char ngx_http_error_full_tail[] = "" CRLF;
+static u_char ngx_http_error_tail[] = "" CRLF;
 static u_char ngx_http_msie_padding[] = "";
 static u_char ngx_http_msie_refresh_head[] = "";
 static u_char ngx_http_msie_refresh_tail[] = "";
