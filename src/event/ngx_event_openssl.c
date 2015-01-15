@@ -717,7 +717,7 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
             wbio = SSL_get_wbio((ngx_ssl_conn_t *) ssl_conn);
 
             if (rbio != wbio) {
-                (void) BIO_set_write_buffer_size(wbio, NGX_BIO_BUFSIZE);
+                (void) BIO_set_write_buffer_size(wbio, NGX_SSL_BUFSIZE);
                 c->ssl->handshake_buffer_set = 1;
             }
         }
