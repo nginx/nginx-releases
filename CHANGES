@@ -1,4 +1,31 @@
 
+Changes with nginx 1.7.10                                        10 Feb 2015
+
+    *) Feature: the "use_temp_path" parameter of the "proxy_cache_path",
+       "fastcgi_cache_path", "scgi_cache_path", and "uwsgi_cache_path"
+       directives.
+
+    *) Feature: the $upstream_header_time variable.
+
+    *) Workaround: now on disk overflow nginx tries to write error logs once
+       a second only.
+
+    *) Bugfix: the "try_files" directive did not ignore normal files while
+       testing directories.
+       Thanks to Damien Tournoud.
+
+    *) Bugfix: alerts "sendfile() failed" if the "sendfile" directive was
+       used on OS X; the bug had appeared in 1.7.8.
+
+    *) Bugfix: alerts "sem_post() failed" might appear in logs.
+
+    *) Bugfix: nginx could not be built with musl libc.
+       Thanks to James Taylor.
+
+    *) Bugfix: nginx could not be built on Tru64 UNIX.
+       Thanks to Goetz T. Fischer.
+
+
 Changes with nginx 1.7.9                                         23 Dec 2014
 
     *) Feature: variables support in the "proxy_cache", "fastcgi_cache",

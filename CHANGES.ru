@@ -1,4 +1,30 @@
 
+Изменения в nginx 1.7.10                                          10.02.2015
+
+    *) Добавление: параметр use_temp_path директив proxy_cache_path,
+       fastcgi_cache_path, scgi_cache_path и uwsgi_cache_path.
+
+    *) Добавление: переменная $upstream_header_time.
+
+    *) Изменение: теперь при переполнении диска nginx пытается писать
+       error_log'и только раз в секунду.
+
+    *) Исправление: директива try_files при тестировании каталогов не
+       игнорировала обычные файлы.
+       Спасибо Damien Tournoud.
+
+    *) Исправление: при использовании директивы sendfile на OS X возникали
+       ошибки "sendfile() failed"; ошибка появилась в nginx 1.7.8.
+
+    *) Исправление: в лог могли писаться сообщения "sem_post() failed".
+
+    *) Исправление: nginx не собирался с musl libc.
+       Спасибо James Taylor.
+
+    *) Исправление: nginx не собирался на Tru64 UNIX.
+       Спасибо Goetz T. Fischer.
+
+
 Изменения в nginx 1.7.9                                           23.12.2014
 
     *) Добавление: директивы proxy_cache, fastcgi_cache, scgi_cache и
