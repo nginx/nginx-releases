@@ -70,6 +70,8 @@ static char *ngx_http_core_internal(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_client_scheme_in_redirect(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 #if (NGX_HTTP_GZIP)
 static ngx_int_t ngx_http_gzip_accept_encoding(ngx_str_t *ae);
 static ngx_uint_t ngx_http_gzip_quantity(u_char *p, u_char *last);
@@ -574,6 +576,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, reset_timedout_connection),
+      NULL },
+
+    { ngx_string("client_scheme_in_redirect"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_client_scheme_in_redirect,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
       NULL },
 
     { ngx_string("server_name_in_redirect"),
@@ -3660,6 +3669,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->lingering_timeout = NGX_CONF_UNSET_MSEC;
     clcf->resolver_timeout = NGX_CONF_UNSET_MSEC;
     clcf->reset_timedout_connection = NGX_CONF_UNSET;
+    clcf->client_scheme_in_redirect = NGX_CONF_UNSET_PTR;
     clcf->server_name_in_redirect = NGX_CONF_UNSET;
     clcf->port_in_redirect = NGX_CONF_UNSET;
     clcf->msie_padding = NGX_CONF_UNSET;
@@ -3918,6 +3928,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->reset_timedout_connection,
                               prev->reset_timedout_connection, 0);
+    ngx_conf_merge_ptr_value(conf->client_scheme_in_redirect,
+                              prev->client_scheme_in_redirect, NULL);
     ngx_conf_merge_value(conf->server_name_in_redirect,
                               prev->server_name_in_redirect, 0);
     ngx_conf_merge_value(conf->port_in_redirect, prev->port_in_redirect, 1);
@@ -5039,6 +5051,38 @@ ngx_http_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
+static char *
+ngx_http_client_scheme_in_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_core_loc_conf_t *clcf = conf;
+
+    ngx_str_t                         *value;
+    ngx_http_compile_complex_value_t   ccv;
+
+    if (clcf->client_scheme_in_redirect != NGX_CONF_UNSET_PTR) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = ngx_palloc(cf->pool,
+                                   sizeof(ngx_http_complex_value_t));
+    if (ccv.complex_value == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    clcf->client_scheme_in_redirect = ccv.complex_value;
+
+    return NGX_CONF_OK;
+}
 
 #if (NGX_HTTP_GZIP)
 

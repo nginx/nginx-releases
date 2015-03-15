@@ -152,7 +152,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
 {
     u_char                    *p;
     size_t                     len;
-    ngx_str_t                  host, *status_line;
+    ngx_str_t                  client_scheme, host, *status_line;
     ngx_buf_t                 *b;
     ngx_uint_t                 status, i, port;
     ngx_chain_t                out;
@@ -317,6 +317,15 @@ ngx_http_header_filter(ngx_http_request_t *r)
     {
         r->headers_out.location->hash = 0;
 
+        if (clcf->client_scheme_in_redirect) {
+            if (ngx_http_complex_value(r, clcf->client_scheme_in_redirect, &client_scheme) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+        } else {
+            ngx_str_null(&client_scheme);
+        }
+
         if (clcf->server_name_in_redirect) {
             cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
             host = cscf->server_name;
@@ -374,6 +383,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
         }
 
     } else {
+        ngx_str_null(&client_scheme);
         ngx_str_null(&host);
         port = 0;
     }
@@ -521,14 +531,19 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
         p = b->last + sizeof("Location: ") - 1;
 
-        b->last = ngx_cpymem(b->last, "Location: http",
-                             sizeof("Location: http") - 1);
+        b->last = ngx_cpymem(b->last, "Location: ",
+                             sizeof("Location: ") - 1);
 
+        if (client_scheme.len) {
+            b->last = ngx_copy(b->last, client_scheme.data, client_scheme.len);
+        } else {
+            b->last = ngx_cpymem(b->last, "http", sizeof("http") - 1);
 #if (NGX_HTTP_SSL)
-        if (c->ssl) {
-            *b->last++ ='s';
-        }
+            if (c->ssl) {
+                *b->last++ ='s';
+            }
 #endif
+        }
 
         *b->last++ = ':'; *b->last++ = '/'; *b->last++ = '/';
         b->last = ngx_copy(b->last, host.data, host.len);

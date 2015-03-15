@@ -99,7 +99,7 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
     size_t                        len;
     u_char                       *p, *buf, *last;
     ngx_buf_t                    *b;
-    ngx_str_t                     host;
+    ngx_str_t                     client_scheme, host;
     ngx_uint_t                    i, j, count, port;
     ngx_chain_t                  *cl;
     ngx_list_part_t              *part, *pt;
@@ -217,6 +217,15 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
     {
         r->headers_out.location->hash = 0;
 
+        if (clcf->client_scheme_in_redirect) {
+            if (ngx_http_complex_value(r, clcf->client_scheme_in_redirect, &client_scheme) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+        } else {
+            ngx_str_null(&client_scheme);
+        }
+
         if (clcf->server_name_in_redirect) {
             cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
             host = cscf->server_name;
@@ -275,6 +284,7 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
         }
 
     } else {
+        ngx_str_null(&client_scheme);
         ngx_str_null(&host);
         port = 0;
     }
@@ -411,13 +421,16 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
 
         p = last + NGX_SPDY_NV_VLEN_SIZE;
 
-        last = ngx_cpymem(p, "http", sizeof("http") - 1);
-
+        if (client_scheme.len) {
+            last = ngx_cpymem(p, client_scheme.data, client_scheme.len);
+        } else {
+            last = ngx_cpymem(p, "http", sizeof("http") - 1);
 #if (NGX_HTTP_SSL)
-        if (c->ssl) {
-            *last++ ='s';
-        }
+            if (c->ssl) {
+                *last++ ='s';
+            }
 #endif
+        }
 
         *last++ = ':'; *last++ = '/'; *last++ = '/';
 
