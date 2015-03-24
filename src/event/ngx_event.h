@@ -27,14 +27,6 @@ typedef struct {
 #endif
 
 
-typedef struct {
-    ngx_uint_t       lock;
-
-    ngx_event_t     *events;
-    ngx_event_t     *last;
-} ngx_event_mutex_t;
-
-
 struct ngx_event_s {
     void            *data;
 
@@ -168,21 +160,19 @@ struct ngx_event_aio_s {
     ngx_event_handler_pt       handler;
     ngx_file_t                *file;
 
+#if (NGX_HAVE_AIO_SENDFILE)
+    ssize_t                  (*preload_handler)(ngx_buf_t *file);
+#endif
+
     ngx_fd_t                   fd;
 
 #if (NGX_HAVE_EVENTFD)
     int64_t                    res;
-#if (NGX_TEST_BUILD_EPOLL)
-    ngx_err_t                  err;
-    size_t                     nbytes;
-#endif
-#else
-    ngx_err_t                  err;
-    size_t                     nbytes;
 #endif
 
-#if (NGX_HAVE_AIO_SENDFILE)
-    off_t                      last_offset;
+#if !(NGX_HAVE_EVENTFD) || (NGX_TEST_BUILD_EPOLL)
+    ngx_err_t                  err;
+    size_t                     nbytes;
 #endif
 
     ngx_aiocb_t                aiocb;
@@ -202,7 +192,8 @@ typedef struct {
     ngx_int_t  (*add_conn)(ngx_connection_t *c);
     ngx_int_t  (*del_conn)(ngx_connection_t *c, ngx_uint_t flags);
 
-    ngx_int_t  (*process_changes)(ngx_cycle_t *cycle, ngx_uint_t nowait);
+    ngx_int_t  (*notify)(ngx_event_handler_pt handler);
+
     ngx_int_t  (*process_events)(ngx_cycle_t *cycle, ngx_msec_t timer,
                    ngx_uint_t flags);
 
@@ -415,7 +406,6 @@ extern ngx_event_actions_t   ngx_event_actions;
 #endif
 
 
-#define ngx_process_changes  ngx_event_actions.process_changes
 #define ngx_process_events   ngx_event_actions.process_events
 #define ngx_done_events      ngx_event_actions.done
 
@@ -423,6 +413,8 @@ extern ngx_event_actions_t   ngx_event_actions;
 #define ngx_del_event        ngx_event_actions.del
 #define ngx_add_conn         ngx_event_actions.add_conn
 #define ngx_del_conn         ngx_event_actions.del_conn
+
+#define ngx_notify           ngx_event_actions.notify
 
 #define ngx_add_timer        ngx_event_add_timer
 #define ngx_del_timer        ngx_event_del_timer
@@ -533,7 +525,6 @@ ngx_int_t ngx_send_lowat(ngx_connection_t *c, size_t lowat);
 
 #include <ngx_event_timer.h>
 #include <ngx_event_posted.h>
-#include <ngx_event_busy_lock.h>
 
 #if (NGX_WIN32)
 #include <ngx_iocp_module.h>

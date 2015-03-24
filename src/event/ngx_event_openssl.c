@@ -249,6 +249,12 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
 
     SSL_CTX_set_options(ssl->ctx, SSL_OP_SINGLE_DH_USE);
 
+#ifdef SSL_CTRL_CLEAR_OPTIONS
+    /* only in 0.9.8m+ */
+    SSL_CTX_clear_options(ssl->ctx,
+                          SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1);
+#endif
+
     if (!(protocols & NGX_SSL_SSLv2)) {
         SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_SSLv2);
     }
@@ -259,11 +265,13 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
         SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_TLSv1);
     }
 #ifdef SSL_OP_NO_TLSv1_1
+    SSL_CTX_clear_options(ssl->ctx, SSL_OP_NO_TLSv1_1);
     if (!(protocols & NGX_SSL_TLSv1_1)) {
         SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_TLSv1_1);
     }
 #endif
 #ifdef SSL_OP_NO_TLSv1_2
+    SSL_CTX_clear_options(ssl->ctx, SSL_OP_NO_TLSv1_2);
     if (!(protocols & NGX_SSL_TLSv1_2)) {
         SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_TLSv1_2);
     }
@@ -275,6 +283,10 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
 
 #ifdef SSL_MODE_RELEASE_BUFFERS
     SSL_CTX_set_mode(ssl->ctx, SSL_MODE_RELEASE_BUFFERS);
+#endif
+
+#ifdef SSL_MODE_NO_AUTO_CHAIN
+    SSL_CTX_set_mode(ssl->ctx, SSL_MODE_NO_AUTO_CHAIN);
 #endif
 
     SSL_CTX_set_read_ahead(ssl->ctx, 1);
@@ -1516,7 +1528,6 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             }
 
             in->buf->pos += n;
-            c->sent += n;
 
             if (in->buf->pos == in->buf->last) {
                 in = in->next;
@@ -1617,7 +1628,6 @@ ngx_ssl_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
         }
 
         buf->pos += n;
-        c->sent += n;
 
         if (n < size) {
             break;
@@ -1674,6 +1684,8 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
 
             ngx_post_event(c->read, &ngx_posted_events);
         }
+
+        c->sent += n;
 
         return n;
     }

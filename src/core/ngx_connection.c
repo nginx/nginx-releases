@@ -835,8 +835,6 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
         return NULL;
     }
 
-    /* ngx_mutex_lock */
-
     c = ngx_cycle->free_connections;
 
     if (c == NULL) {
@@ -849,15 +847,11 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
                       "%ui worker_connections are not enough",
                       ngx_cycle->connection_n);
 
-        /* ngx_mutex_unlock */
-
         return NULL;
     }
 
     ngx_cycle->free_connections = c->data;
     ngx_cycle->free_connection_n--;
-
-    /* ngx_mutex_unlock */
 
     if (ngx_cycle->files) {
         ngx_cycle->files[s] = c;
@@ -896,13 +890,9 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 void
 ngx_free_connection(ngx_connection_t *c)
 {
-    /* ngx_mutex_lock */
-
     c->data = ngx_cycle->free_connections;
     ngx_cycle->free_connections = c;
     ngx_cycle->free_connection_n++;
-
-    /* ngx_mutex_unlock */
 
     if (ngx_cycle->files) {
         ngx_cycle->files[c->fd] = NULL;
@@ -942,18 +932,6 @@ ngx_close_connection(ngx_connection_t *c)
             ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
         }
     }
-
-#if (NGX_THREADS)
-
-    /*
-     * we have to clean the connection information before the closing
-     * because another thread may reopen the same file descriptor
-     * before we clean the connection
-     */
-
-    ngx_unlock(&c->lock);
-
-#endif
 
     if (c->read->posted) {
         ngx_delete_posted_event(c->read);
@@ -1073,33 +1051,33 @@ ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
     struct sockaddr_in6  *sin6;
 #endif
 
-    if (c->local_socklen == 0) {
-        return NGX_ERROR;
-    }
+    addr = 0;
 
-    switch (c->local_sockaddr->sa_family) {
+    if (c->local_socklen) {
+        switch (c->local_sockaddr->sa_family) {
 
 #if (NGX_HAVE_INET6)
-    case AF_INET6:
-        sin6 = (struct sockaddr_in6 *) c->local_sockaddr;
+        case AF_INET6:
+            sin6 = (struct sockaddr_in6 *) c->local_sockaddr;
 
-        for (addr = 0, i = 0; addr == 0 && i < 16; i++) {
-            addr |= sin6->sin6_addr.s6_addr[i];
-        }
+            for (i = 0; addr == 0 && i < 16; i++) {
+                addr |= sin6->sin6_addr.s6_addr[i];
+            }
 
-        break;
+            break;
 #endif
 
 #if (NGX_HAVE_UNIX_DOMAIN)
-    case AF_UNIX:
-        addr = 1;
-        break;
+        case AF_UNIX:
+            addr = 1;
+            break;
 #endif
 
-    default: /* AF_INET */
-        sin = (struct sockaddr_in *) c->local_sockaddr;
-        addr = sin->sin_addr.s_addr;
-        break;
+        default: /* AF_INET */
+            sin = (struct sockaddr_in *) c->local_sockaddr;
+            addr = sin->sin_addr.s_addr;
+            break;
+        }
     }
 
     if (addr == 0) {

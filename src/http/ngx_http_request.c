@@ -652,6 +652,7 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
 
     if (n == -1) {
         if (err == NGX_EAGAIN) {
+            rev->ready = 0;
 
             if (!rev->timer_set) {
                 ngx_add_timer(rev, c->listening->post_accept_timeout);
@@ -2522,6 +2523,11 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
 
         ngx_http_close_request(r, 0);
         return;
+    }
+
+    if (r->reading_body) {
+        r->keepalive = 0;
+        r->lingering_close = 1;
     }
 
     if (!ngx_terminate

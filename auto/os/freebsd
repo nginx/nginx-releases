@@ -44,10 +44,12 @@ if [ $osreldate -gt 300007 ]; then
     CORE_SRCS="$CORE_SRCS $FREEBSD_SENDFILE_SRCS"
 fi
 
-if [ $osreldate -gt 502103 ]; then
-    echo " + sendfile()'s SF_NODISKIO found"
+if [ $NGX_FILE_AIO = YES ]; then
+    if [ $osreldate -gt 502103 ]; then
+        echo " + sendfile()'s SF_NODISKIO found"
 
-    have=NGX_HAVE_AIO_SENDFILE . auto/have
+        have=NGX_HAVE_AIO_SENDFILE . auto/have
+    fi
 fi
 
 # POSIX semaphores
@@ -78,7 +80,7 @@ fi
 NGX_KQUEUE_CHECKED=YES
 
 
-# kqueue's NOTE_LAWAT
+# kqueue's NOTE_LOWAT
 
 if [ \( $version -lt 500000 -a $version -ge 430000 \) \
      -o $version -ge 500018 ]
@@ -94,25 +96,6 @@ if [ \( $version -lt 500000 -a $version -ge 440001 \) \
 then
     echo " + kqueue's EVFILT_TIMER found"
     have=NGX_HAVE_TIMER_EVENT . auto/have
-fi
-
-
-if [ $USE_THREADS = "rfork" ]; then
-
-    echo " + using rfork()"
-
-#    # kqueue's EVFILT_SIGNAL is safe
-#
-#    if [ $version -gt 460101 ]; then
-#        echo " + kqueue's EVFILT_SIGNAL is safe"
-#        have=NGX_HAVE_SAFE_EVFILT_SIGNAL . auto/have
-#    else
-#        echo "$0: error: the kqueue's EVFILT_SIGNAL is unsafe on this"
-#        echo "FreeBSD version, so --with-threads=rfork could not be used"
-#        echo
-#
-#        exit 1
-#    fi
 fi
 
 

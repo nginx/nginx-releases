@@ -13,6 +13,10 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+#if (NGX_THREADS)
+#include <ngx_thread_pool.h>
+#endif
+
 
 #define NGX_HTTP_GZIP_PROXIED_OFF       0x0002
 #define NGX_HTTP_GZIP_PROXIED_EXPIRED   0x0004
@@ -27,7 +31,7 @@
 
 #define NGX_HTTP_AIO_OFF                0
 #define NGX_HTTP_AIO_ON                 1
-#define NGX_HTTP_AIO_SENDFILE           2
+#define NGX_HTTP_AIO_THREADS            2
 
 
 #define NGX_HTTP_SATISFY_ALL            0
@@ -396,9 +400,7 @@ struct ngx_http_core_loc_conf_s {
                                            /* client_body_in_singe_buffer */
     ngx_flag_t    internal;                /* internal */
     ngx_flag_t    sendfile;                /* sendfile */
-#if (NGX_HAVE_FILE_AIO)
     ngx_flag_t    aio;                     /* aio */
-#endif
     ngx_flag_t    tcp_nopush;              /* tcp_nopush */
     ngx_flag_t    tcp_nodelay;             /* tcp_nodelay */
     ngx_flag_t    reset_timedout_connection; /* reset_timedout_connection */
@@ -422,6 +424,11 @@ struct ngx_http_core_loc_conf_s {
 #if (NGX_PCRE)
     ngx_array_t  *gzip_disable;            /* gzip_disable */
 #endif
+#endif
+
+#if (NGX_THREADS)
+    ngx_thread_pool_t         *thread_pool;
+    ngx_http_complex_value_t  *thread_pool_value;
 #endif
 
 #if (NGX_HAVE_OPENAT)
@@ -526,10 +533,14 @@ ngx_http_cleanup_t *ngx_http_cleanup_add(ngx_http_request_t *r, size_t size);
 typedef ngx_int_t (*ngx_http_output_header_filter_pt)(ngx_http_request_t *r);
 typedef ngx_int_t (*ngx_http_output_body_filter_pt)
     (ngx_http_request_t *r, ngx_chain_t *chain);
+typedef ngx_int_t (*ngx_http_request_body_filter_pt)
+    (ngx_http_request_t *r, ngx_chain_t *chain);
 
 
 ngx_int_t ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *chain);
 ngx_int_t ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *chain);
+ngx_int_t ngx_http_request_body_save_filter(ngx_http_request_t *r,
+   ngx_chain_t *chain);
 
 
 ngx_int_t ngx_http_set_disable_symlinks(ngx_http_request_t *r,

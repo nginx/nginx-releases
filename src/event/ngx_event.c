@@ -212,7 +212,7 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
         timer = ngx_event_find_timer();
         flags = NGX_UPDATE_TIME;
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
 
         if (timer == NGX_TIMER_INFINITE || timer > 500) {
             timer = 500;
@@ -721,10 +721,6 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         c[i].fd = (ngx_socket_t) -1;
 
         next = &c[i];
-
-#if (NGX_THREADS)
-        c[i].lock = 0;
-#endif
     } while (i);
 
     cycle->free_connections = next;

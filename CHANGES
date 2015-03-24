@@ -1,4 +1,51 @@
 
+Changes with nginx 1.7.11                                        24 Mar 2015
+
+    *) Change: the "sendfile" parameter of the "aio" directive is
+       deprecated; now nginx automatically uses AIO to pre-load data for
+       sendfile if both "aio" and "sendfile" directives are used.
+
+    *) Feature: experimental thread pools support.
+
+    *) Feature: the "proxy_request_buffering", "fastcgi_request_buffering",
+       "scgi_request_buffering", and "uwsgi_request_buffering" directives.
+
+    *) Feature: request body filters experimental API.
+
+    *) Feature: client SSL certificates support in mail proxy.
+       Thanks to Sven Peter, Franck Levionnois, and Filipe Da Silva.
+
+    *) Feature: startup speedup when using the "hash ... consistent"
+       directive in the upstream block.
+       Thanks to Wai Keen Woon.
+
+    *) Feature: debug logging into a cyclic memory buffer.
+
+    *) Bugfix: in hash table handling.
+       Thanks to Chris West.
+
+    *) Bugfix: in the "proxy_cache_revalidate" directive.
+
+    *) Bugfix: SSL connections might hang if deferred accept or the
+       "proxy_protocol" parameter of the "listen" directive were used.
+       Thanks to James Hamlin.
+
+    *) Bugfix: the $upstream_response_time variable might contain a wrong
+       value if the "image_filter" directive was used.
+
+    *) Bugfix: in integer overflow handling.
+       Thanks to Régis Leroy.
+
+    *) Bugfix: it was not possible to enable SSLv3 with LibreSSL.
+
+    *) Bugfix: the "ignoring stale global SSL error ... called a function
+       you should not call" alerts appeared in logs when using LibreSSL.
+
+    *) Bugfix: certificates specified by the "ssl_client_certificate" and
+       "ssl_trusted_certificate" directives were inadvertently used to
+       automatically construct certificate chains.
+
+
 Changes with nginx 1.7.10                                        10 Feb 2015
 
     *) Feature: the "use_temp_path" parameter of the "proxy_cache_path",

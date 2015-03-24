@@ -473,6 +473,7 @@ struct ngx_http_request_s {
     unsigned                          request_body_in_clean_file:1;
     unsigned                          request_body_file_group_access:1;
     unsigned                          request_body_file_log_level:3;
+    unsigned                          request_body_no_buffering:1;
 
     unsigned                          subrequest_in_memory:1;
     unsigned                          waited:1;
@@ -509,6 +510,7 @@ struct ngx_http_request_s {
     unsigned                          keepalive:1;
     unsigned                          lingering_close:1;
     unsigned                          discard_body:1;
+    unsigned                          reading_body:1;
     unsigned                          internal:1;
     unsigned                          error_page:1;
     unsigned                          filter_finalize:1;
@@ -574,10 +576,10 @@ struct ngx_http_request_s {
 
 typedef struct {
     ngx_http_posted_request_t         terminal_posted_request;
-#if (NGX_HAVE_AIO_SENDFILE)
-    u_char                            aio_preload;
-#endif
 } ngx_http_ephemeral_t;
+
+
+#define ngx_http_ephemeral(r)  (void *) (&r->uri_start)
 
 
 extern ngx_http_header_t       ngx_http_headers_in[];

@@ -181,8 +181,6 @@ ngx_http_file_cache_new(ngx_http_request_t *r)
     c->file.log = r->connection->log;
     c->file.fd = NGX_INVALID_FILE;
 
-    c->last_modified = -1;
-
     return NGX_OK;
 }
 
@@ -258,7 +256,7 @@ ngx_int_t
 ngx_http_file_cache_open(ngx_http_request_t *r)
 {
     ngx_int_t                  rc, rv;
-    ngx_uint_t                 cold, test;
+    ngx_uint_t                 test;
     ngx_http_cache_t          *c;
     ngx_pool_cleanup_t        *cln;
     ngx_open_file_info_t       of;
@@ -300,8 +298,6 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
         return NGX_HTTP_CACHE_SCARCE;
     }
 
-    cold = cache->sh->cold;
-
     if (rc == NGX_OK) {
 
         if (c->error) {
@@ -314,18 +310,18 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
 
     } else { /* rc == NGX_DECLINED */
 
+        test = cache->sh->cold ? 1 : 0;
+
         if (c->min_uses > 1) {
 
-            if (!cold) {
+            if (!test) {
                 return NGX_HTTP_CACHE_SCARCE;
             }
 
-            test = 1;
             rv = NGX_HTTP_CACHE_SCARCE;
 
         } else {
             c->temp_file = 1;
-            test = cold ? 1 : 0;
             rv = NGX_DECLINED;
         }
     }
@@ -650,7 +646,7 @@ ngx_http_file_cache_aio_read(ngx_http_request_t *r, ngx_http_cache_t *c)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    if (!clcf->aio) {
+    if (clcf->aio != NGX_HTTP_AIO_ON) {
         goto noaio;
     }
 
