@@ -1,4 +1,22 @@
 
+Changes with nginx 1.7.12                                        07 Apr 2015
+
+    *) Feature: now the "tcp_nodelay" directive works with backend SSL
+       connections.
+
+    *) Feature: now thread pools can be used to read cache file headers.
+
+    *) Bugfix: in the "proxy_request_buffering" directive.
+
+    *) Bugfix: a segmentation fault might occur in a worker process when
+       using thread pools on Linux.
+
+    *) Bugfix: in error handling when using the "ssl_stapling" directive.
+       Thanks to Filipe da Silva.
+
+    *) Bugfix: in the ngx_http_spdy_module.
+
+
 Changes with nginx 1.7.11                                        24 Mar 2015
 
     *) Change: the "sendfile" parameter of the "aio" directive is
