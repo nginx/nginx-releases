@@ -139,7 +139,7 @@ static ngx_command_t  ngx_core_commands[] = {
       0,
       NULL },
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
 
     { ngx_string("worker_threads"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
@@ -248,18 +248,30 @@ main(int argc, char *const *argv)
         }
 
         if (ngx_show_configure) {
-            ngx_write_stderr(
+
 #ifdef NGX_COMPILER
-                "built by " NGX_COMPILER NGX_LINEFEED
+            ngx_write_stderr("built by " NGX_COMPILER NGX_LINEFEED);
 #endif
+
 #if (NGX_SSL)
+            if (SSLeay() == SSLEAY_VERSION_NUMBER) {
+                ngx_write_stderr("built with " OPENSSL_VERSION_TEXT
+                                 NGX_LINEFEED);
+            } else {
+                ngx_write_stderr("built with " OPENSSL_VERSION_TEXT
+                                 " (running with ");
+                ngx_write_stderr((char *) (uintptr_t)
+                                 SSLeay_version(SSLEAY_VERSION));
+                ngx_write_stderr(")" NGX_LINEFEED);
+            }
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-                "TLS SNI support enabled" NGX_LINEFEED
+            ngx_write_stderr("TLS SNI support enabled" NGX_LINEFEED);
 #else
-                "TLS SNI support disabled" NGX_LINEFEED
+            ngx_write_stderr("TLS SNI support disabled" NGX_LINEFEED);
 #endif
 #endif
-                "configure arguments:" NGX_CONFIGURE NGX_LINEFEED);
+
+            ngx_write_stderr("configure arguments:" NGX_CONFIGURE NGX_LINEFEED);
         }
 
         if (!ngx_test_config) {
@@ -959,7 +971,7 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
     ccf->user = (ngx_uid_t) NGX_CONF_UNSET_UINT;
     ccf->group = (ngx_gid_t) NGX_CONF_UNSET_UINT;
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
     ccf->worker_threads = NGX_CONF_UNSET;
     ccf->thread_stack_size = NGX_CONF_UNSET_SIZE;
 #endif
@@ -1000,7 +1012,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
 #endif
 
-#if (NGX_THREADS)
+#if (NGX_OLD_THREADS)
 
     ngx_conf_init_value(ccf->worker_threads, 0);
     ngx_threads_n = ccf->worker_threads;

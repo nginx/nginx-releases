@@ -181,13 +181,11 @@ struct ngx_connection_s {
 #endif
 
 #if (NGX_HAVE_AIO_SENDFILE)
-    unsigned            aio_sendfile:1;
     unsigned            busy_count:2;
-    ngx_buf_t          *busy_sendfile;
 #endif
 
 #if (NGX_THREADS)
-    ngx_atomic_t        lock;
+    ngx_thread_task_t  *sendfile_task;
 #endif
 };
 

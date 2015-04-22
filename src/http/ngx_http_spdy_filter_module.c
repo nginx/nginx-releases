@@ -493,9 +493,13 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
                 continue;
             }
 
-            *last++ = '\0';
+            if (h[j].value.len) {
+                if (last != p) {
+                    *last++ = '\0';
+                }
 
-            last = ngx_cpymem(last, h[j].value.data, h[j].value.len);
+                last = ngx_cpymem(last, h[j].value.data, h[j].value.len);
+            }
 
             h[j].hash = 2;
         }
@@ -1140,6 +1144,11 @@ ngx_http_spdy_handle_stream(ngx_http_spdy_connection_t *sc,
     }
 
     wev = stream->request->connection->write;
+
+    /*
+     * This timer can only be set if the stream was delayed because of rate
+     * limit.  In that case the event should be triggered by the timer.
+     */
 
     if (!wev->timer_set) {
         wev->delayed = 0;

@@ -429,8 +429,12 @@ ngx_vslprintf(u_char *buf, u_char *last, const char *fmt, va_list args)
             case 'N':
 #if (NGX_WIN32)
                 *buf++ = CR;
-#endif
+                if (buf < last) {
+                    *buf++ = LF;
+                }
+#else
                 *buf++ = LF;
+#endif
                 fmt++;
 
                 continue;
@@ -897,26 +901,28 @@ ngx_filename_cmp(u_char *s1, u_char *s2, size_t n)
 ngx_int_t
 ngx_atoi(u_char *line, size_t n)
 {
-    ngx_int_t  value;
+    ngx_int_t  value, cutoff, cutlim;
 
     if (n == 0) {
         return NGX_ERROR;
     }
+
+    cutoff = NGX_MAX_INT_T_VALUE / 10;
+    cutlim = NGX_MAX_INT_T_VALUE % 10;
 
     for (value = 0; n--; line++) {
         if (*line < '0' || *line > '9') {
             return NGX_ERROR;
         }
 
+        if (value >= cutoff && (value > cutoff || *line - '0' > cutlim)) {
+            return NGX_ERROR;
+        }
+
         value = value * 10 + (*line - '0');
     }
 
-    if (value < 0) {
-        return NGX_ERROR;
-
-    } else {
-        return value;
-    }
+    return value;
 }
 
 
@@ -925,12 +931,15 @@ ngx_atoi(u_char *line, size_t n)
 ngx_int_t
 ngx_atofp(u_char *line, size_t n, size_t point)
 {
-    ngx_int_t   value;
+    ngx_int_t   value, cutoff, cutlim;
     ngx_uint_t  dot;
 
     if (n == 0) {
         return NGX_ERROR;
     }
+
+    cutoff = NGX_MAX_INT_T_VALUE / 10;
+    cutlim = NGX_MAX_INT_T_VALUE % 10;
 
     dot = 0;
 
@@ -953,98 +962,107 @@ ngx_atofp(u_char *line, size_t n, size_t point)
             return NGX_ERROR;
         }
 
+        if (value >= cutoff && (value > cutoff || *line - '0' > cutlim)) {
+            return NGX_ERROR;
+        }
+
         value = value * 10 + (*line - '0');
         point -= dot;
     }
 
     while (point--) {
+        if (value > cutoff) {
+            return NGX_ERROR;
+        }
+
         value = value * 10;
     }
 
-    if (value < 0) {
-        return NGX_ERROR;
-
-    } else {
-        return value;
-    }
+    return value;
 }
 
 
 ssize_t
 ngx_atosz(u_char *line, size_t n)
 {
-    ssize_t  value;
+    ssize_t  value, cutoff, cutlim;
 
     if (n == 0) {
         return NGX_ERROR;
     }
+
+    cutoff = NGX_MAX_SIZE_T_VALUE / 10;
+    cutlim = NGX_MAX_SIZE_T_VALUE % 10;
 
     for (value = 0; n--; line++) {
         if (*line < '0' || *line > '9') {
             return NGX_ERROR;
         }
 
+        if (value >= cutoff && (value > cutoff || *line - '0' > cutlim)) {
+            return NGX_ERROR;
+        }
+
         value = value * 10 + (*line - '0');
     }
 
-    if (value < 0) {
-        return NGX_ERROR;
-
-    } else {
-        return value;
-    }
+    return value;
 }
 
 
 off_t
 ngx_atoof(u_char *line, size_t n)
 {
-    off_t  value;
+    off_t  value, cutoff, cutlim;
 
     if (n == 0) {
         return NGX_ERROR;
     }
+
+    cutoff = NGX_MAX_OFF_T_VALUE / 10;
+    cutlim = NGX_MAX_OFF_T_VALUE % 10;
 
     for (value = 0; n--; line++) {
         if (*line < '0' || *line > '9') {
             return NGX_ERROR;
         }
 
+        if (value >= cutoff && (value > cutoff || *line - '0' > cutlim)) {
+            return NGX_ERROR;
+        }
+
         value = value * 10 + (*line - '0');
     }
 
-    if (value < 0) {
-        return NGX_ERROR;
-
-    } else {
-        return value;
-    }
+    return value;
 }
 
 
 time_t
 ngx_atotm(u_char *line, size_t n)
 {
-    time_t  value;
+    time_t  value, cutoff, cutlim;
 
     if (n == 0) {
         return NGX_ERROR;
     }
+
+    cutoff = NGX_MAX_TIME_T_VALUE / 10;
+    cutlim = NGX_MAX_TIME_T_VALUE % 10;
 
     for (value = 0; n--; line++) {
         if (*line < '0' || *line > '9') {
             return NGX_ERROR;
         }
 
+        if (value >= cutoff && (value > cutoff || *line - '0' > cutlim)) {
+            return NGX_ERROR;
+        }
+
         value = value * 10 + (*line - '0');
     }
 
-    if (value < 0) {
-        return NGX_ERROR;
-
-    } else {
-        return value;
-    }
+    return value;
 }
 
 
@@ -1052,13 +1070,19 @@ ngx_int_t
 ngx_hextoi(u_char *line, size_t n)
 {
     u_char     c, ch;
-    ngx_int_t  value;
+    ngx_int_t  value, cutoff;
 
     if (n == 0) {
         return NGX_ERROR;
     }
 
+    cutoff = NGX_MAX_INT_T_VALUE / 16;
+
     for (value = 0; n--; line++) {
+        if (value > cutoff) {
+            return NGX_ERROR;
+        }
+
         ch = *line;
 
         if (ch >= '0' && ch <= '9') {
@@ -1076,12 +1100,7 @@ ngx_hextoi(u_char *line, size_t n)
         return NGX_ERROR;
     }
 
-    if (value < 0) {
-        return NGX_ERROR;
-
-    } else {
-        return value;
-    }
+    return value;
 }
 
 
@@ -1766,6 +1785,58 @@ ngx_escape_html(u_char *dst, u_char *src, size_t size)
             *dst++ = ch;
             break;
         }
+        size--;
+    }
+
+    return (uintptr_t) dst;
+}
+
+
+uintptr_t
+ngx_escape_json(u_char *dst, u_char *src, size_t size)
+{
+    u_char      ch;
+    ngx_uint_t  len;
+
+    if (dst == NULL) {
+        len = 0;
+
+        while (size) {
+            ch = *src++;
+
+            if (ch == '\\' || ch == '"') {
+                len++;
+
+            } else if (ch <= 0x1f) {
+                len += sizeof("\\u001F") - 2;
+            }
+
+            size--;
+        }
+
+        return (uintptr_t) len;
+    }
+
+    while (size) {
+        ch = *src++;
+
+        if (ch > 0x1f) {
+
+            if (ch == '\\' || ch == '"') {
+                *dst++ = '\\';
+            }
+
+            *dst++ = ch;
+
+        } else {
+            *dst++ = '\\'; *dst++ = 'u'; *dst++ = '0'; *dst++ = '0';
+            *dst++ = '0' + (ch >> 4);
+
+            ch &= 0xf;
+
+            *dst++ = (ch < 10) ? ('0' + ch) : ('A' + ch - 10);
+        }
+
         size--;
     }
 

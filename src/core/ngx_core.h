@@ -9,6 +9,9 @@
 #define _NGX_CORE_H_INCLUDED_
 
 
+#include <ngx_config.h>
+
+
 typedef struct ngx_module_s      ngx_module_t;
 typedef struct ngx_conf_s        ngx_conf_t;
 typedef struct ngx_cycle_s       ngx_cycle_t;
@@ -21,6 +24,10 @@ typedef struct ngx_file_s        ngx_file_t;
 typedef struct ngx_event_s       ngx_event_t;
 typedef struct ngx_event_aio_s   ngx_event_aio_t;
 typedef struct ngx_connection_s  ngx_connection_t;
+
+#if (NGX_THREADS)
+typedef struct ngx_thread_task_s  ngx_thread_task_t;
+#endif
 
 typedef void (*ngx_event_handler_pt)(ngx_event_t *ev);
 typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
