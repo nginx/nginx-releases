@@ -1,4 +1,9 @@
 
+Changes with nginx 1.8.0                                         21 Apr 2015
+
+    *) 1.8.x stable branch.
+
+
 Changes with nginx 1.7.12                                        07 Apr 2015
 
     *) Feature: now the "tcp_nodelay" directive works with backend SSL
