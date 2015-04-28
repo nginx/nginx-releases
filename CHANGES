@@ -1,7 +1,25 @@
 
-Changes with nginx 1.8.0                                         21 Apr 2015
+Changes with nginx 1.9.0                                         28 Apr 2015
 
-    *) 1.8.x stable branch.
+    *) Change: obsolete aio and rtsig event methods have been removed.
+
+    *) Feature: the "zone" directive inside the "upstream" block.
+
+    *) Feature: the stream module.
+
+    *) Feature: byte ranges support in the ngx_http_memcached_module.
+       Thanks to Martin Mlynář.
+
+    *) Feature: shared memory can now be used on Windows versions with
+       address space layout randomization.
+       Thanks to Sergey Brester.
+
+    *) Feature: the "error_log" directive can now be used on mail and server
+       levels in mail proxy.
+
+    *) Bugfix: the "proxy_protocol" parameter of the "listen" directive did
+       not work if not specified in the first "listen" directive for a
+       listen socket.
 
 
 Changes with nginx 1.7.12                                        07 Apr 2015

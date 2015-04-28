@@ -389,7 +389,7 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
 #endif
             /* TODO: close on exit */
 
-            if (!(ngx_event_flags & NGX_USE_AIO_EVENT)) {
+            if (!(ngx_event_flags & NGX_USE_IOCP_EVENT)) {
                 if (ngx_nonblocking(s) == -1) {
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                                   ngx_nonblocking_n " %V failed",
@@ -764,10 +764,7 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
         if (c) {
             if (c->read->active) {
-                if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
-                    ngx_del_conn(c, NGX_CLOSE_EVENT);
-
-                } else if (ngx_event_flags & NGX_USE_EPOLL_EVENT) {
+                if (ngx_event_flags & NGX_USE_EPOLL_EVENT) {
 
                     /*
                      * it seems that Linux-2.6.x OpenVZ sends events

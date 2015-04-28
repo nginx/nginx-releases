@@ -26,10 +26,6 @@ static ngx_event_t     ngx_cleaner_event;
 ngx_uint_t             ngx_test_config;
 ngx_uint_t             ngx_quiet_mode;
 
-#if (NGX_OLD_THREADS)
-ngx_tls_key_t          ngx_core_tls_key;
-#endif
-
 
 /* STUB NAME */
 static ngx_connection_t  dumb;
@@ -441,9 +437,13 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
             }
 
             if (shm_zone[i].tag == oshm_zone[n].tag
-                && shm_zone[i].shm.size == oshm_zone[n].shm.size)
+                && shm_zone[i].shm.size == oshm_zone[n].shm.size
+                && !shm_zone[i].noreuse)
             {
                 shm_zone[i].shm.addr = oshm_zone[n].shm.addr;
+#if (NGX_WIN32)
+                shm_zone[i].shm.handle = oshm_zone[n].shm.handle;
+#endif
 
                 if (shm_zone[i].init(&shm_zone[i], oshm_zone[n].data)
                     != NGX_OK)
@@ -863,6 +863,22 @@ ngx_init_zone_pool(ngx_cycle_t *cycle, ngx_shm_zone_t *zn)
             return NGX_OK;
         }
 
+#if (NGX_WIN32)
+
+        /* remap at the required address */
+
+        if (ngx_shm_remap(&zn->shm, sp->addr) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        sp = (ngx_slab_pool_t *) zn->shm.addr;
+
+        if (sp == sp->addr) {
+            return NGX_OK;
+        }
+
+#endif
+
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "shared zone \"%V\" has no equal addresses: %p vs %p",
                       &zn->shm.name, sp->addr, sp);
@@ -1210,6 +1226,10 @@ ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name, size_t size, void *tag)
             return NULL;
         }
 
+        if (shm_zone[i].shm.size == 0) {
+            shm_zone[i].shm.size = size;
+        }
+
         if (size && size != shm_zone[i].shm.size) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                             "the size %uz of shared memory zone \"%V\" "
@@ -1234,6 +1254,7 @@ ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name, size_t size, void *tag)
     shm_zone->shm.exists = 0;
     shm_zone->init = NULL;
     shm_zone->tag = tag;
+    shm_zone->noreuse = 0;
 
     return shm_zone;
 }

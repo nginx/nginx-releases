@@ -7,22 +7,22 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_http.h>
+#include <ngx_stream.h>
 
 
-static ngx_int_t ngx_http_upstream_init_least_conn_peer(ngx_http_request_t *r,
-    ngx_http_upstream_srv_conf_t *us);
-static ngx_int_t ngx_http_upstream_get_least_conn_peer(
+static ngx_int_t ngx_stream_upstream_init_least_conn_peer(
+    ngx_stream_session_t *s, ngx_stream_upstream_srv_conf_t *us);
+static ngx_int_t ngx_stream_upstream_get_least_conn_peer(
     ngx_peer_connection_t *pc, void *data);
-static char *ngx_http_upstream_least_conn(ngx_conf_t *cf, ngx_command_t *cmd,
+static char *ngx_stream_upstream_least_conn(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
 
-static ngx_command_t  ngx_http_upstream_least_conn_commands[] = {
+static ngx_command_t  ngx_stream_upstream_least_conn_commands[] = {
 
     { ngx_string("least_conn"),
-      NGX_HTTP_UPS_CONF|NGX_CONF_NOARGS,
-      ngx_http_upstream_least_conn,
+      NGX_STREAM_UPS_CONF|NGX_CONF_NOARGS,
+      ngx_stream_upstream_least_conn,
       0,
       0,
       NULL },
@@ -31,98 +31,91 @@ static ngx_command_t  ngx_http_upstream_least_conn_commands[] = {
 };
 
 
-static ngx_http_module_t  ngx_http_upstream_least_conn_module_ctx = {
-    NULL,                                  /* preconfiguration */
-    NULL,                                  /* postconfiguration */
+static ngx_stream_module_t  ngx_stream_upstream_least_conn_module_ctx = {
+    NULL,                                    /* create main configuration */
+    NULL,                                    /* init main configuration */
 
-    NULL,                                  /* create main configuration */
-    NULL,                                  /* init main configuration */
-
-    NULL,                                  /* create server configuration */
-    NULL,                                  /* merge server configuration */
-
-    NULL,                                  /* create location configuration */
-    NULL                                   /* merge location configuration */
+    NULL,                                    /* create server configuration */
+    NULL,                                    /* merge server configuration */
 };
 
 
-ngx_module_t  ngx_http_upstream_least_conn_module = {
+ngx_module_t  ngx_stream_upstream_least_conn_module = {
     NGX_MODULE_V1,
-    &ngx_http_upstream_least_conn_module_ctx, /* module context */
-    ngx_http_upstream_least_conn_commands, /* module directives */
-    NGX_HTTP_MODULE,                       /* module type */
-    NULL,                                  /* init master */
-    NULL,                                  /* init module */
-    NULL,                                  /* init process */
-    NULL,                                  /* init thread */
-    NULL,                                  /* exit thread */
-    NULL,                                  /* exit process */
-    NULL,                                  /* exit master */
+    &ngx_stream_upstream_least_conn_module_ctx, /* module context */
+    ngx_stream_upstream_least_conn_commands, /* module directives */
+    NGX_STREAM_MODULE,                       /* module type */
+    NULL,                                    /* init master */
+    NULL,                                    /* init module */
+    NULL,                                    /* init process */
+    NULL,                                    /* init thread */
+    NULL,                                    /* exit thread */
+    NULL,                                    /* exit process */
+    NULL,                                    /* exit master */
     NGX_MODULE_V1_PADDING
 };
 
 
 static ngx_int_t
-ngx_http_upstream_init_least_conn(ngx_conf_t *cf,
-    ngx_http_upstream_srv_conf_t *us)
+ngx_stream_upstream_init_least_conn(ngx_conf_t *cf,
+    ngx_stream_upstream_srv_conf_t *us)
 {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cf->log, 0,
+    ngx_log_debug0(NGX_LOG_DEBUG_STREAM, cf->log, 0,
                    "init least conn");
 
-    if (ngx_http_upstream_init_round_robin(cf, us) != NGX_OK) {
+    if (ngx_stream_upstream_init_round_robin(cf, us) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    us->peer.init = ngx_http_upstream_init_least_conn_peer;
+    us->peer.init = ngx_stream_upstream_init_least_conn_peer;
 
     return NGX_OK;
 }
 
 
 static ngx_int_t
-ngx_http_upstream_init_least_conn_peer(ngx_http_request_t *r,
-    ngx_http_upstream_srv_conf_t *us)
+ngx_stream_upstream_init_least_conn_peer(ngx_stream_session_t *s,
+    ngx_stream_upstream_srv_conf_t *us)
 {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+    ngx_log_debug0(NGX_LOG_DEBUG_STREAM, s->connection->log, 0,
                    "init least conn peer");
 
-    if (ngx_http_upstream_init_round_robin_peer(r, us) != NGX_OK) {
+    if (ngx_stream_upstream_init_round_robin_peer(s, us) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    r->upstream->peer.get = ngx_http_upstream_get_least_conn_peer;
+    s->upstream->peer.get = ngx_stream_upstream_get_least_conn_peer;
 
     return NGX_OK;
 }
 
 
 static ngx_int_t
-ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
+ngx_stream_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
 {
-    ngx_http_upstream_rr_peer_data_t  *rrp = data;
+    ngx_stream_upstream_rr_peer_data_t *rrp = data;
 
-    time_t                         now;
-    uintptr_t                      m;
-    ngx_int_t                      rc, total;
-    ngx_uint_t                     i, n, p, many;
-    ngx_http_upstream_rr_peer_t   *peer, *best;
-    ngx_http_upstream_rr_peers_t  *peers;
+    time_t                           now;
+    uintptr_t                        m;
+    ngx_int_t                        rc, total;
+    ngx_uint_t                       i, n, p, many;
+    ngx_stream_upstream_rr_peer_t   *peer, *best;
+    ngx_stream_upstream_rr_peers_t  *peers;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_STREAM, pc->log, 0,
                    "get least conn peer, try: %ui", pc->tries);
 
     if (rrp->peers->single) {
-        return ngx_http_upstream_get_round_robin_peer(pc, rrp);
+        return ngx_stream_upstream_get_round_robin_peer(pc, rrp);
     }
 
-    pc->cached = 0;
     pc->connection = NULL;
 
     now = ngx_time();
 
     peers = rrp->peers;
 
-    ngx_http_upstream_rr_peers_wlock(peers);
+    ngx_stream_upstream_rr_peers_wlock(peers);
 
     best = NULL;
     total = 0;
@@ -174,14 +167,14 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
     }
 
     if (best == NULL) {
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0,
+        ngx_log_debug0(NGX_LOG_DEBUG_STREAM, pc->log, 0,
                        "get least conn peer, no peer found");
 
         goto failed;
     }
 
     if (many) {
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0,
+        ngx_log_debug0(NGX_LOG_DEBUG_STREAM, pc->log, 0,
                        "get least conn peer, many");
 
         for (peer = best, i = p;
@@ -243,14 +236,14 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
 
     rrp->tried[n] |= m;
 
-    ngx_http_upstream_rr_peers_unlock(peers);
+    ngx_stream_upstream_rr_peers_unlock(peers);
 
     return NGX_OK;
 
 failed:
 
     if (peers->next) {
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0,
+        ngx_log_debug0(NGX_LOG_DEBUG_STREAM, pc->log, 0,
                        "get least conn peer, backup servers");
 
         rrp->peers = peers->next;
@@ -262,15 +255,15 @@ failed:
              rrp->tried[i] = 0;
         }
 
-        ngx_http_upstream_rr_peers_unlock(peers);
+        ngx_stream_upstream_rr_peers_unlock(peers);
 
-        rc = ngx_http_upstream_get_least_conn_peer(pc, rrp);
+        rc = ngx_stream_upstream_get_least_conn_peer(pc, rrp);
 
         if (rc != NGX_BUSY) {
             return rc;
         }
 
-        ngx_http_upstream_rr_peers_wlock(peers);
+        ngx_stream_upstream_rr_peers_wlock(peers);
     }
 
     /* all peers failed, mark them as live for quick recovery */
@@ -279,7 +272,7 @@ failed:
         peer->fails = 0;
     }
 
-    ngx_http_upstream_rr_peers_unlock(peers);
+    ngx_stream_upstream_rr_peers_unlock(peers);
 
     pc->name = peers->name;
 
@@ -288,25 +281,25 @@ failed:
 
 
 static char *
-ngx_http_upstream_least_conn(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_stream_upstream_least_conn(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_upstream_srv_conf_t  *uscf;
+    ngx_stream_upstream_srv_conf_t  *uscf;
 
-    uscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
+    uscf = ngx_stream_conf_get_module_srv_conf(cf, ngx_stream_upstream_module);
 
     if (uscf->peer.init_upstream) {
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                            "load balancing method redefined");
     }
 
-    uscf->peer.init_upstream = ngx_http_upstream_init_least_conn;
+    uscf->peer.init_upstream = ngx_stream_upstream_init_least_conn;
 
-    uscf->flags = NGX_HTTP_UPSTREAM_CREATE
-                  |NGX_HTTP_UPSTREAM_WEIGHT
-                  |NGX_HTTP_UPSTREAM_MAX_FAILS
-                  |NGX_HTTP_UPSTREAM_FAIL_TIMEOUT
-                  |NGX_HTTP_UPSTREAM_DOWN
-                  |NGX_HTTP_UPSTREAM_BACKUP;
+    uscf->flags = NGX_STREAM_UPSTREAM_CREATE
+                  |NGX_STREAM_UPSTREAM_WEIGHT
+                  |NGX_STREAM_UPSTREAM_MAX_FAILS
+                  |NGX_STREAM_UPSTREAM_FAIL_TIMEOUT
+                  |NGX_STREAM_UPSTREAM_DOWN
+                  |NGX_STREAM_UPSTREAM_BACKUP;
 
     return NGX_CONF_OK;
 }

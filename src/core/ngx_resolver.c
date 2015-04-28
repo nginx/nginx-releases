@@ -3092,7 +3092,7 @@ ngx_udp_connect(ngx_udp_connection_t *uc)
 
     rc = connect(s, uc->sockaddr, uc->socklen);
 
-    /* TODO: aio, iocp */
+    /* TODO: iocp */
 
     if (rc == -1) {
         ngx_log_error(NGX_LOG_CRIT, &uc->log, ngx_socket_errno,
@@ -3104,23 +3104,13 @@ ngx_udp_connect(ngx_udp_connection_t *uc)
     /* UDP sockets are always ready to write */
     wev->ready = 1;
 
-    if (ngx_add_event) {
+    event = (ngx_event_flags & NGX_USE_CLEAR_EVENT) ?
+                /* kqueue, epoll */                 NGX_CLEAR_EVENT:
+                /* select, poll, /dev/poll */       NGX_LEVEL_EVENT;
+                /* eventport event type has no meaning: oneshot only */
 
-        event = (ngx_event_flags & NGX_USE_CLEAR_EVENT) ?
-                    /* kqueue, epoll */                 NGX_CLEAR_EVENT:
-                    /* select, poll, /dev/poll */       NGX_LEVEL_EVENT;
-                    /* eventport event type has no meaning: oneshot only */
-
-        if (ngx_add_event(rev, NGX_READ_EVENT, event) != NGX_OK) {
-            goto failed;
-        }
-
-    } else {
-        /* rtsig */
-
-        if (ngx_add_conn(c) == NGX_ERROR) {
-            goto failed;
-        }
+    if (ngx_add_event(rev, NGX_READ_EVENT, event) != NGX_OK) {
+        goto failed;
     }
 
     return NGX_OK;
