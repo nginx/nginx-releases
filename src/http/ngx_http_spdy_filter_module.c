@@ -175,12 +175,6 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    if (r->headers_out.server == NULL) {
-        len += ngx_http_spdy_nv_nsize("server");
-        len += clcf->server_tokens ? ngx_http_spdy_nv_vsize(NGINX_VER)
-                                   : ngx_http_spdy_nv_vsize("nginx");
-    }
-
     if (r->headers_out.date == NULL) {
         len += ngx_http_spdy_nv_nsize("date")
                + ngx_http_spdy_nv_vsize("Wed, 31 Dec 1986 10:00:00 GMT");
@@ -325,15 +319,6 @@ ngx_http_spdy_header_filter(ngx_http_request_t *r)
     }
 
     count = 2;
-
-    if (r->headers_out.server == NULL) {
-        last = ngx_http_spdy_nv_write_name(last, "server");
-        last = clcf->server_tokens
-               ? ngx_http_spdy_nv_write_val(last, NGINX_VER)
-               : ngx_http_spdy_nv_write_val(last, "nginx");
-
-        count++;
-    }
 
     if (r->headers_out.date == NULL) {
         last = ngx_http_spdy_nv_write_name(last, "date");
