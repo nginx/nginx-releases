@@ -62,15 +62,27 @@ ngx_strerror_init(void)
         goto failed;
     }
 
+    ngx_memzero(ngx_sys_errlist, len);
     for (err = 0; err < NGX_SYS_NERR; err++) {
         msg = strerror(err);
         len = ngx_strlen(msg);
+	if (0 >= len)
+            continue;
 
         p = malloc(len);
         if (p == NULL) {
+            ngx_err_t i = 0;
+            for (; i < err; ++i) {
+                ngx_sys_errlist[err].len = 0;
+                free( ngx_sys_errlist[err].data);
+                ngx_sys_errlist[err].data = NULL;
+            }
+            free(ngx_sys_errlist);
+            ngx_sys_errlist = NULL;
             goto failed;
         }
 
+        ngx_memzero(p,len);
         ngx_memcpy(p, msg, len);
         ngx_sys_errlist[err].len = len;
         ngx_sys_errlist[err].data = p;
