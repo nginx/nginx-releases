@@ -546,7 +546,8 @@ ngx_http_image_process(ngx_http_request_t *r)
         && ctx->width <= ctx->max_width
         && ctx->height <= ctx->max_height
         && ctx->angle == 0
-        && !ctx->force)
+        && !ctx->force
+        && conf->filter != NGX_HTTP_IMAGE_RESIZE)
     {
         return ngx_http_image_asis(r, ctx);
     }
@@ -773,7 +774,8 @@ ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
     if (!ctx->force
         && ctx->angle == 0
         && (ngx_uint_t) sx <= ctx->max_width
-        && (ngx_uint_t) sy <= ctx->max_height)
+        && (ngx_uint_t) sy <= ctx->max_height
+        && conf->filter != NGX_HTTP_IMAGE_RESIZE)
     {
         gdImageDestroy(src);
         return ngx_http_image_asis(r, ctx);
@@ -809,15 +811,18 @@ transparent:
 
     if (conf->filter == NGX_HTTP_IMAGE_RESIZE) {
 
-        if ((ngx_uint_t) dx > ctx->max_width) {
+        if ((int)ctx->max_width > 0 && (int)ctx->max_height > 0) {
             dy = dy * ctx->max_width / dx;
-            dy = dy ? dy : 1;
             dx = ctx->max_width;
-        }
-
-        if ((ngx_uint_t) dy > ctx->max_height) {
+            if (dy > (int)ctx->max_height) {
+                dx = dx * ctx->max_height / dy;
+                dy = ctx->max_height;
+            }
+        } else if ((int)ctx->max_width > 0) {
+            dy = dy * ctx->max_width / dx;
+            dx = ctx->max_width;
+        } else if ((int)ctx->max_height > 0) {
             dx = dx * ctx->max_height / dy;
-            dx = dx ? dx : 1;
             dy = ctx->max_height;
         }
 
