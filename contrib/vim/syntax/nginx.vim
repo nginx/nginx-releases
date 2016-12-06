@@ -96,6 +96,7 @@ syn keyword ngxDirective client_body_timeout
 syn keyword ngxDirective client_header_buffer_size
 syn keyword ngxDirective client_header_timeout
 syn keyword ngxDirective client_max_body_size
+syn keyword ngxDirective client_scheme_in_redirect
 syn keyword ngxDirective connection_pool_size
 syn keyword ngxDirective create_full_put_path
 syn keyword ngxDirective daemon
